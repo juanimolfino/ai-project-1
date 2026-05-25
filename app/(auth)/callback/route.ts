@@ -53,7 +53,14 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
-  await ensureUserProfile(user);
+  try {
+    await ensureUserProfile(user);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unknown profile setup error";
+    console.error("Auth callback profile setup failed", { message });
+    loginUrl.searchParams.set("error", `Profile setup failed: ${message}`);
+    return NextResponse.redirect(loginUrl);
+  }
 
   return response;
 }
