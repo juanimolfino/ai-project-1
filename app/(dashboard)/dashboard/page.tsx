@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { CreditCard, Wallet } from "lucide-react";
+import { CreditCard, LogOut, Wallet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { JobCreateForm } from "@/components/dashboard/job-create-form";
 import { JobHistory } from "@/components/dashboard/job-history";
@@ -34,6 +34,9 @@ export default async function DashboardPage() {
           </form>
           <form action="/api/stripe/portal" method="post">
             <Button variant="outline"><CreditCard className="h-4 w-4" /> Billing portal</Button>
+          </form>
+          <form action="/logout" method="post">
+            <Button variant="ghost"><LogOut className="h-4 w-4" /> Log out</Button>
           </form>
         </div>
       </div>
