@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { CreditCard, LogOut, Wallet } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { DashboardAutoRefresh } from "@/components/dashboard/dashboard-auto-refresh";
 import { JobCreateForm } from "@/components/dashboard/job-create-form";
 import { JobHistory } from "@/components/dashboard/job-history";
 import { ensureUserProfile, getDashboard } from "@/lib/db/queries";
@@ -21,6 +22,7 @@ export default async function DashboardPage() {
 
   return (
     <main className="mx-auto max-w-6xl px-6 py-8">
+      <DashboardAutoRefresh statuses={dashboard.jobs.map((job) => job.status)} />
       <div className="mb-8 flex flex-col justify-between gap-4 md:flex-row md:items-center">
         <div>
           <h1 className="text-3xl font-semibold">Dashboard</h1>

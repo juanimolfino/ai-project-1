@@ -1,11 +1,13 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { ImageIcon, Mic2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 
 export function JobCreateForm() {
+  const router = useRouter();
   const [type, setType] = useState<"image" | "tts">("image");
   const [input, setInput] = useState("");
   const [voice, setVoice] = useState("alloy");
@@ -28,7 +30,13 @@ export function JobCreateForm() {
     });
     const data = await response.json();
     setLoading(false);
-    setMessage(response.ok ? `Queued job ${data.jobId}` : data.error ?? "Could not create job");
+    if (response.ok) {
+      setInput("");
+      setMessage(`Queued job ${data.jobId}`);
+      router.refresh();
+      return;
+    }
+    setMessage(data.error ?? "Could not create job");
   }
 
   return (
