@@ -24,11 +24,7 @@ export function LoginForm({ initialMessage }: { initialMessage?: string }) {
   }
 
   async function signInWithGoogle() {
-    const supabase = createSupabaseBrowserClient();
-    await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: { redirectTo: `${window.location.origin}/callback` }
-    });
+    window.location.href = "/login/google";
   }
 
   return (
