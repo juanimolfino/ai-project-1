@@ -47,7 +47,7 @@ export async function GET(request: NextRequest) {
 
   const response = NextResponse.redirect(data.url);
   cookiesToApply.forEach(({ name, value, options }) => {
-    response.cookies.set(name, value, options);
+    response.cookies.set(name, value, { ...options, path: "/" });
   });
   return response;
 }
