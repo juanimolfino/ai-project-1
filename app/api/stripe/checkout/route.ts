@@ -10,7 +10,7 @@ export async function POST(request: Request) {
     data: { user }
   } = await supabase.auth.getUser();
 
-  if (!user) return NextResponse.redirect(new URL("/login", request.url));
+  if (!user) return NextResponse.redirect(new URL("/login", request.url), 303);
 
   const profile = await ensureUserProfile(user);
   const form = await request.formData();
@@ -29,7 +29,7 @@ export async function POST(request: Request) {
       metadata: { userId: profile.id, kind: "subscription", plan: "pro" },
       subscription_data: { metadata: { userId: profile.id, plan: "pro" } }
     });
-    return NextResponse.redirect(session.url!);
+    return NextResponse.redirect(session.url!, 303);
   }
 
   const pack = getCreditPack(String(form.get("packId") ?? "credits_10"));
@@ -46,5 +46,5 @@ export async function POST(request: Request) {
     metadata: { userId: profile.id, kind: "credits", credits: String(pack.credits) }
   });
 
-  return NextResponse.redirect(session.url!);
+  return NextResponse.redirect(session.url!, 303);
 }

@@ -12,7 +12,7 @@ export async function POST(request: Request) {
     data: { user }
   } = await supabase.auth.getUser();
 
-  if (!user) return NextResponse.redirect(new URL("/login", request.url));
+  if (!user) return NextResponse.redirect(new URL("/login", request.url), 303);
 
   const profile = await ensureUserProfile(user);
   const stripe = getStripe();
@@ -30,5 +30,5 @@ export async function POST(request: Request) {
     return_url: `${appUrl}/dashboard`
   });
 
-  return NextResponse.redirect(portal.url);
+  return NextResponse.redirect(portal.url, 303);
 }
