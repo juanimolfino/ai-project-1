@@ -1,7 +1,6 @@
 export const CREDIT_PACKS = [
   { id: "credits_10", credits: 10, price: 9, stripePriceEnv: "STRIPE_PRICE_ID_CREDITS_10" },
-  { id: "credits_50", credits: 50, price: 39, stripePriceEnv: "STRIPE_PRICE_ID_CREDITS_50" },
-  { id: "credits_100", credits: 100, price: 69, stripePriceEnv: "STRIPE_PRICE_ID_CREDITS_50" }
+  { id: "credits_50", credits: 50, price: 39, stripePriceEnv: "STRIPE_PRICE_ID_CREDITS_50" }
 ] as const;
 
 export const PLANS = [

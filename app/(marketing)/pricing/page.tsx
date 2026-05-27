@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { CheckCircle2 } from "lucide-react";
+import { CheckCircle2, CreditCard, Wallet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CREDIT_PACKS, PLANS } from "@/lib/stripe/pricing";
 
@@ -15,8 +15,8 @@ export default function PricingPage() {
             Sell monthly plans and non-expiring credit packs at the same time.
           </p>
         </div>
-        <Button asChild>
-          <Link href="/login">Sign in to buy</Link>
+        <Button asChild variant="outline">
+          <Link href="/dashboard">Back to dashboard</Link>
         </Button>
       </div>
       <div className="grid gap-4 md:grid-cols-2">
@@ -32,6 +32,19 @@ export default function PricingPage() {
                 </li>
               ))}
             </ul>
+            {plan.id === "pro" ? (
+              <form action="/api/stripe/checkout" method="post" className="mt-6">
+                <input type="hidden" name="mode" value="subscription" />
+                <Button type="submit" className="w-full">
+                  <CreditCard className="h-4 w-4" />
+                  Upgrade to Pro
+                </Button>
+              </form>
+            ) : (
+              <Button disabled variant="outline" className="mt-6 w-full">
+                Current starter plan
+              </Button>
+            )}
           </section>
         ))}
       </div>
@@ -42,6 +55,14 @@ export default function PricingPage() {
             <h3 className="text-xl font-semibold">{pack.credits} credits</h3>
             <p className="mt-2 text-3xl font-semibold">${pack.price}</p>
             <p className="mt-3 text-sm text-muted-foreground">Credits do not expire.</p>
+            <form action="/api/stripe/checkout" method="post" className="mt-6">
+              <input type="hidden" name="mode" value="credits" />
+              <input type="hidden" name="packId" value={pack.id} />
+              <Button type="submit" className="w-full">
+                <Wallet className="h-4 w-4" />
+                Buy {pack.credits} credits
+              </Button>
+            </form>
           </section>
         ))}
       </div>

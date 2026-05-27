@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import { CreditCard, LogOut, Wallet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DashboardAutoRefresh } from "@/components/dashboard/dashboard-auto-refresh";
@@ -29,11 +30,9 @@ export default async function DashboardPage() {
           <p className="mt-1 text-muted-foreground">{profile.email}</p>
         </div>
         <div className="flex gap-2">
-          <form action="/api/stripe/checkout" method="post">
-            <input type="hidden" name="mode" value="credits" />
-            <input type="hidden" name="packId" value="credits_10" />
-            <Button variant="outline"><Wallet className="h-4 w-4" /> Buy credits</Button>
-          </form>
+          <Button asChild variant="outline">
+            <Link href="/pricing"><Wallet className="h-4 w-4" /> Buy credits</Link>
+          </Button>
           <form action="/api/stripe/portal" method="post">
             <Button variant="outline"><CreditCard className="h-4 w-4" /> Billing portal</Button>
           </form>
