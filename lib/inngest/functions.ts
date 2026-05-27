@@ -11,13 +11,14 @@ import { eq } from "drizzle-orm";
 export const runAiJob = inngest.createFunction(
   {
     id: "run-ai-job",
-    retries: 3
+    retries: 0
   },
   { event: "ai/job.created" },
   async ({ event, step }) => {
     const { jobId } = event.data as { jobId: string };
     const job = await step.run("load job", async () => getDb().query.jobs.findFirst({ where: eq(jobs.id, jobId) }));
     if (!job) throw new Error(`Job ${jobId} not found`);
+    if (job.status !== "pending") return { status: job.status };
 
     try {
       await step.run("mark processing", async () => markJobProcessing(job.id));
@@ -35,13 +36,13 @@ export const runAiJob = inngest.createFunction(
       await step.run("mark done", async () => markJobDone(job.id, resultUrl));
       await step.run("send ready email", async () => {
         const user = await getDb().query.users.findFirst({ where: eq(users.id, job.userId) });
-        if (user?.email) await sendJobReadyEmail(user.email, resultUrl);
+        if (user?.email) await sendJobReadyEmail(user.email, `${process.env.NEXT_PUBLIC_APP_URL ?? ""}/dashboard`);
       });
       return { resultUrl };
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unknown AI job failure";
       await step.run("refund credits", async () => refundJobCredits(job.id, message));
-      throw error;
+      return { status: "failed", error: message };
     } finally {
       await step.run("release concurrency slot", async () => releaseJobSlot(job.userId));
     }

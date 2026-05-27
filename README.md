@@ -16,7 +16,7 @@ npm install
 cp .env.example .env.local
 ```
 
-3. Create the Supabase project, storage bucket `ai-results`, Stripe products/prices, Upstash Redis database, Inngest app, Resend API key, fal.ai key, and OpenAI API key.
+3. Create the Supabase project, private storage bucket `ai-results`, Stripe products/prices, Upstash Redis database, Inngest app, Resend API key, fal.ai key, and OpenAI API key. Use fresh credentials per product; never reuse the template project's secrets.
 
 4. Run database migrations:
 
@@ -60,6 +60,16 @@ Webhook endpoint:
 
 Handled events are `checkout.session.completed`, `invoice.paid`, and `customer.subscription.deleted`.
 
+Webhook credit grants are idempotent by `stripeEventId`, so replayed Stripe events do not increment balances twice.
+
+## Security Defaults
+
+- Generated files should live in a private Supabase Storage bucket. The app stores object paths and serves authenticated, short-lived signed URLs through `/api/jobs/result/[id]`.
+- `/api/health` is protected in production with `HEALTHCHECK_SECRET`; call it with `Authorization: Bearer <secret>`.
+- Public auth/session debug endpoints are not part of the template.
+- Credit debits, purchases, subscription grants, and refunds are recorded in `transactions`.
+- Rotate every secret before creating a new product from this repo.
+
 ## Deploy to Vercel
 
 1. Push the repo to GitHub.
@@ -67,7 +77,8 @@ Handled events are `checkout.session.completed`, `invoice.paid`, and `customer.s
 3. Add every variable from [.env.example](./.env.example).
 4. Configure Supabase auth redirect URLs for your Vercel domain.
 5. Configure Stripe webhook signing secret for `https://your-domain.com/api/stripe/webhook`.
-6. Deploy.
+6. Set `HEALTHCHECK_SECRET` in production if you want to use `/api/health`.
+7. Deploy.
 
 ## Main Routes
 
@@ -76,5 +87,6 @@ Handled events are `checkout.session.completed`, `invoice.paid`, and `customer.s
 - `/login` Supabase magic link and Google OAuth.
 - `/dashboard` protected user dashboard.
 - `/api/jobs/create` async job creation.
+- `/api/jobs/result/[id]` authenticated signed result URL redirect.
 - `/api/jobs/status/[id]` job polling endpoint.
 - `/api/inngest` Inngest function endpoint.

@@ -1,6 +1,6 @@
 {
-  "id": "fa05926e-f1b8-4575-b8be-0b4f45eaf7fe",
-  "prevId": "00000000-0000-0000-0000-000000000000",
+  "id": "600a4a0e-a7aa-463e-adf6-0515ba0b59a9",
+  "prevId": "fa05926e-f1b8-4575-b8be-0b4f45eaf7fe",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -446,6 +446,7 @@
       "values": [
         "credit_purchase",
         "subscription_payment",
+        "credit_spend",
         "credit_refund",
         "signup_bonus"
       ]

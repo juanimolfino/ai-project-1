@@ -12,7 +12,13 @@ import {
 
 export const jobStatusEnum = pgEnum("job_status", ["pending", "processing", "done", "failed"]);
 export const jobTypeEnum = pgEnum("job_type", ["image", "tts"]);
-export const transactionTypeEnum = pgEnum("transaction_type", ["credit_purchase", "subscription_payment", "credit_refund", "signup_bonus"]);
+export const transactionTypeEnum = pgEnum("transaction_type", [
+  "credit_purchase",
+  "subscription_payment",
+  "credit_spend",
+  "credit_refund",
+  "signup_bonus"
+]);
 
 export const users = pgTable("users", {
   id: uuid("id").defaultRandom().primaryKey(),

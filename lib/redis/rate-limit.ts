@@ -29,5 +29,8 @@ export async function reserveJobSlot(userId: string) {
 }
 
 export async function releaseJobSlot(userId: string) {
-  await getRedis().decr(`jobs:active:${userId}`);
+  const key = `jobs:active:${userId}`;
+  const client = getRedis();
+  const count = await client.decr(key);
+  if (count <= 0) await client.del(key);
 }

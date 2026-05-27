@@ -1,6 +1,6 @@
 export const CREDIT_PACKS = [
-  { id: "credits_10", credits: 10, price: 9, stripePriceEnv: "STRIPE_PRICE_ID_CREDITS_10" },
-  { id: "credits_50", credits: 50, price: 39, stripePriceEnv: "STRIPE_PRICE_ID_CREDITS_50" }
+  { id: "credits_10", credits: 10, price: 1, stripePriceEnv: "STRIPE_PRICE_ID_CREDITS_10" },
+  { id: "credits_50", credits: 50, price: 2, stripePriceEnv: "STRIPE_PRICE_ID_CREDITS_50" }
 ] as const;
 
 export const PLANS = [
@@ -14,7 +14,7 @@ export const PLANS = [
   {
     id: "pro",
     name: "Pro",
-    priceMonthly: 29,
+    priceMonthly: 3,
     monthlyCredits: Number(process.env.PRO_MONTHLY_CREDITS ?? 100),
     stripePriceEnv: "STRIPE_PRICE_ID_PRO_MONTHLY",
     features: ["Higher monthly credits", "Premium feature flag", "Priority generation queue"]

@@ -44,6 +44,10 @@ function fail(label, error) {
   process.exitCode = 1;
 }
 
+function cleanEnv(key) {
+  return process.env[key]?.trim().replace(/^["']|["']$/g, "");
+}
+
 async function check(label, fn) {
   try {
     await fn();
@@ -68,21 +72,25 @@ await check("DATABASE_URL can query Postgres", async () => {
 
 await check("Supabase service role can list storage buckets", async () => {
   const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL,
-    process.env.SUPABASE_SERVICE_ROLE_KEY,
+    cleanEnv("NEXT_PUBLIC_SUPABASE_URL"),
+    cleanEnv("SUPABASE_SERVICE_ROLE_KEY"),
     { auth: { persistSession: false } }
   );
   const { data, error } = await supabase.storage.listBuckets();
   if (error) throw error;
-  if (!data.some((bucket) => bucket.name === (process.env.SUPABASE_STORAGE_BUCKET ?? "ai-results"))) {
-    warn(`Supabase bucket "${process.env.SUPABASE_STORAGE_BUCKET ?? "ai-results"}" not found`);
+  const bucketName = cleanEnv("SUPABASE_STORAGE_BUCKET") ?? "ai-results";
+  const bucket = data.find((bucket) => bucket.name === bucketName);
+  if (!bucket) {
+    warn(`Supabase bucket "${bucketName}" not found`);
+  } else if (bucket.public) {
+    warn(`Supabase bucket "${bucketName}" is public; private buckets are recommended`);
   }
 });
 
 await check("Supabase anon key can initialize auth client", async () => {
   const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+    cleanEnv("NEXT_PUBLIC_SUPABASE_URL"),
+    cleanEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY")
   );
   const { error } = await supabase.auth.getSession();
   if (error) throw error;
@@ -90,38 +98,38 @@ await check("Supabase anon key can initialize auth client", async () => {
 
 await check("Upstash Redis REST ping", async () => {
   const redis = new Redis({
-    url: process.env.UPSTASH_REDIS_REST_URL,
-    token: process.env.UPSTASH_REDIS_REST_TOKEN
+    url: cleanEnv("UPSTASH_REDIS_REST_URL"),
+    token: cleanEnv("UPSTASH_REDIS_REST_TOKEN")
   });
   const result = await redis.ping();
   if (result !== "PONG") throw new Error(`unexpected ping result ${result}`);
 });
 
 await check("Stripe secret key can retrieve balance", async () => {
-  const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
+  const stripe = new Stripe(cleanEnv("STRIPE_SECRET_KEY"), {
     apiVersion: "2025-08-27.basil"
   });
   await stripe.balance.retrieve();
 });
 
 await check("Stripe configured price IDs exist", async () => {
-  const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
+  const stripe = new Stripe(cleanEnv("STRIPE_SECRET_KEY"), {
     apiVersion: "2025-08-27.basil"
   });
   await Promise.all([
-    stripe.prices.retrieve(process.env.STRIPE_PRICE_ID_CREDITS_10),
-    stripe.prices.retrieve(process.env.STRIPE_PRICE_ID_CREDITS_50),
-    stripe.prices.retrieve(process.env.STRIPE_PRICE_ID_PRO_MONTHLY)
+    stripe.prices.retrieve(cleanEnv("STRIPE_PRICE_ID_CREDITS_10")),
+    stripe.prices.retrieve(cleanEnv("STRIPE_PRICE_ID_CREDITS_50")),
+    stripe.prices.retrieve(cleanEnv("STRIPE_PRICE_ID_PRO_MONTHLY"))
   ]);
 });
 
 await check("OpenAI API key can retrieve TTS model", async () => {
-  const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+  const openai = new OpenAI({ apiKey: cleanEnv("OPENAI_API_KEY") });
   await openai.models.retrieve("gpt-4o-mini-tts");
 });
 
 await check("Resend API key can list domains", async () => {
-  const resend = new Resend(process.env.RESEND_API_KEY);
+  const resend = new Resend(cleanEnv("RESEND_API_KEY"));
   await resend.domains.list();
 });
 

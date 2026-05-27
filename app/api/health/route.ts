@@ -15,7 +15,15 @@ const envKeys = [
   "RESEND_API_KEY"
 ] as const;
 
-export async function GET() {
+export async function GET(request: Request) {
+  const configuredSecret = process.env.HEALTHCHECK_SECRET;
+  const authorization = request.headers.get("authorization");
+  const suppliedSecret = authorization?.startsWith("Bearer ") ? authorization.slice("Bearer ".length) : null;
+
+  if (process.env.NODE_ENV === "production" && (!configuredSecret || suppliedSecret !== configuredSecret)) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const env = Object.fromEntries(envKeys.map((key) => [key, Boolean(process.env[key])]));
   const checks: Record<string, unknown> = { env };
 

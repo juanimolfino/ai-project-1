@@ -10,25 +10,36 @@ export async function ensureUserProfile(authUser: User) {
   const existing = await db.query.users.findFirst({ where: eq(users.authUserId, authUser.id) });
   if (existing) return existing;
 
-  const [profile] = await db
-    .insert(users)
-    .values({
-      authUserId: authUser.id,
-      email,
-      fullName: authUser.user_metadata?.full_name ?? authUser.user_metadata?.name ?? null
-    })
-    .returning();
-
   const signupCredits = Number(process.env.FREE_SIGNUP_CREDITS ?? 5);
-  await db.insert(credits).values({ userId: profile.id, balance: signupCredits });
-  await db.insert(subscriptions).values({ userId: profile.id, plan: "free", status: "active" });
-  await db.insert(transactions).values({
-    userId: profile.id,
-    type: "signup_bonus",
-    credits: signupCredits,
-    metadata: { source: "first_login" }
+
+  const { profile, createdProfile } = await db.transaction(async (tx) => {
+    const [created] = await tx
+      .insert(users)
+      .values({
+        authUserId: authUser.id,
+        email,
+        fullName: authUser.user_metadata?.full_name ?? authUser.user_metadata?.name ?? null
+      })
+      .onConflictDoNothing({ target: users.authUserId })
+      .returning();
+
+    const profile = created ?? (await tx.query.users.findFirst({ where: eq(users.authUserId, authUser.id) }));
+    if (!profile) throw new Error("Could not create user profile");
+
+    if (created) {
+      await tx.insert(credits).values({ userId: profile.id, balance: signupCredits }).onConflictDoNothing();
+      await tx.insert(subscriptions).values({ userId: profile.id, plan: "free", status: "active" });
+      await tx.insert(transactions).values({
+        userId: profile.id,
+        type: "signup_bonus",
+        credits: signupCredits,
+        metadata: { source: "first_login" }
+      });
+    }
+
+    return { profile, createdProfile: Boolean(created) };
   });
-  await sendWelcomeEmail(email, signupCredits);
+  if (createdProfile) await sendWelcomeEmail(email, signupCredits);
 
   return profile;
 }
@@ -79,6 +90,13 @@ export async function createPendingJob(input: {
       })
       .returning();
 
+    await tx.insert(transactions).values({
+      userId: input.userId,
+      type: "credit_spend",
+      credits: -input.creditsUsed,
+      metadata: { jobId: job.id, jobType: input.type }
+    });
+
     return job;
   });
 }
@@ -86,26 +104,42 @@ export async function createPendingJob(input: {
 export async function refundJobCredits(jobId: string, reason: string) {
   const db = getDb();
   return db.transaction(async (tx) => {
-    const job = await tx.query.jobs.findFirst({ where: eq(jobs.id, jobId) });
+    const [job] = await tx.select().from(jobs).where(eq(jobs.id, jobId)).for("update");
     if (!job) throw new Error("Job not found");
+    if (job.status === "done") return;
 
-    await tx.update(credits).set({ balance: sql`${credits.balance} + ${job.creditsUsed}`, updatedAt: new Date() }).where(eq(credits.userId, job.userId));
-    await tx.insert(transactions).values({
+    const refundKey = `job_refund:${jobId}`;
+    const [refund] = await tx.insert(transactions).values({
       userId: job.userId,
       type: "credit_refund",
       credits: job.creditsUsed,
+      stripeEventId: refundKey,
       metadata: { jobId, reason }
-    });
+    }).onConflictDoNothing({ target: transactions.stripeEventId }).returning({ id: transactions.id });
+
+    if (refund) {
+      await tx
+        .update(credits)
+        .set({ balance: sql`${credits.balance} + ${job.creditsUsed}`, updatedAt: new Date() })
+        .where(eq(credits.userId, job.userId));
+    }
+
     await tx.update(jobs).set({ status: "failed", error: reason, updatedAt: new Date() }).where(eq(jobs.id, jobId));
   });
 }
 
 export async function markJobProcessing(jobId: string) {
-  return getDb().update(jobs).set({ status: "processing", updatedAt: new Date() }).where(eq(jobs.id, jobId));
+  return getDb()
+    .update(jobs)
+    .set({ status: "processing", updatedAt: new Date() })
+    .where(and(eq(jobs.id, jobId), eq(jobs.status, "pending")));
 }
 
 export async function markJobDone(jobId: string, resultUrl: string) {
-  return getDb().update(jobs).set({ status: "done", resultUrl, updatedAt: new Date() }).where(eq(jobs.id, jobId));
+  return getDb()
+    .update(jobs)
+    .set({ status: "done", resultUrl, updatedAt: new Date() })
+    .where(and(eq(jobs.id, jobId), eq(jobs.status, "processing")));
 }
 
 export async function getJobForUser(jobId: string, userId: string) {
@@ -115,7 +149,18 @@ export async function getJobForUser(jobId: string, userId: string) {
 export async function addCredits(userId: string, amount: number, metadata: Record<string, unknown>, stripeEventId?: string) {
   const db = getDb();
   const profile = await db.query.users.findFirst({ where: eq(users.id, userId) });
-  await db.transaction(async (tx) => {
+  const applied = await db.transaction(async (tx) => {
+    const [transaction] = await tx.insert(transactions).values({
+      userId,
+      type: metadata.kind === "subscription" ? "subscription_payment" : "credit_purchase",
+      credits: amount,
+      amountCents: typeof metadata.amountCents === "number" ? metadata.amountCents : null,
+      stripeEventId,
+      metadata
+    }).onConflictDoNothing().returning({ id: transactions.id });
+
+    if (!transaction) return false;
+
     await tx
       .insert(credits)
       .values({ userId, balance: amount })
@@ -123,14 +168,8 @@ export async function addCredits(userId: string, amount: number, metadata: Recor
         target: credits.userId,
         set: { balance: sql`${credits.balance} + ${amount}`, updatedAt: new Date() }
       });
-    await tx.insert(transactions).values({
-      userId,
-      type: metadata.kind === "subscription" ? "subscription_payment" : "credit_purchase",
-      credits: amount,
-      amountCents: typeof metadata.amountCents === "number" ? metadata.amountCents : null,
-      stripeEventId,
-      metadata
-    }).onConflictDoNothing();
+
+    return true;
   });
-  if (profile?.email && amount > 0) await sendPurchaseConfirmationEmail(profile.email, amount);
+  if (applied && profile?.email && amount > 0) await sendPurchaseConfirmationEmail(profile.email, amount);
 }
