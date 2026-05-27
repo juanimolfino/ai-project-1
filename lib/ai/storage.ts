@@ -35,7 +35,7 @@ export async function createSignedResultUrl(path: string, options?: { download?:
   return data.signedUrl;
 }
 
-function normalizeStoragePath(pathOrUrl: string, bucket: string) {
+export function normalizeStoragePath(pathOrUrl: string, bucket: string) {
   if (!pathOrUrl.startsWith("http://") && !pathOrUrl.startsWith("https://")) return pathOrUrl;
 
   try {
